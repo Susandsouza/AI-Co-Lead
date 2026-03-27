@@ -80,8 +80,11 @@ AI-Co-Lead/
 
 ## 👩‍💻 Author
 Susan Riona D'Souza
+
 Rajath D Shetty
+
 Sathwik s Rao
+
 Shreyas
 
 ---
