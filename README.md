@@ -76,18 +76,13 @@ AI-Co-Lead/
 ├── README.md
 ```
 
----
 
-## 🚀 Future Enhancements
-- ML-based predictions
-- ChatGPT integration
-- Role-based login
-- Report export
-
----
 
 ## 👩‍💻 Author
 Susan Riona D'Souza
+Rajath D Shetty
+Sathwik s Rao
+Shreyas
 
 ---
 
