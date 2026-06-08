@@ -1,237 +1,323 @@
-# AI Co-Lead Professional Dashboard (Final + Interactive)
+# app.py
 
 import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-import plotly.express as px
+from pages.risks import render_risks
+from pages.analytics import render_analytics
+from pages.meetings import render_meetings
+from pages.deadlines import render_deadlines
+from pages.employees import render_employees
+from pages.chatbot import render_chatbot
+from pages.reports import render_reports
+from services.recommendation_engine import generate_ai_recommendations
+from services.risk_engine import generate_risk_summary
+# ---------------- CONFIG ----------------
 
-st.set_page_config(page_title="AI Co-Lead Dashboard", layout="wide")
+st.set_page_config(
+    page_title="AI Co-Lead",
+    page_icon="🚀",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+st.markdown("""
+<style>
+[data-testid="stSidebarNav"] {
+    display: none;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ---------------- LOAD DATA ----------------
+
 @st.cache_data
 def load_data():
+    
     df = pd.read_csv("AI_CoLead_5000_Dataset.csv")
 
-    # Add simulated fields if missing
+    # Generate dates if missing
     if "Task_Date" not in df.columns:
         today = datetime.today()
-        df["Task_Date"] = [today - timedelta(days=np.random.randint(0, 30)) for _ in range(len(df))]
-        df["Deadline"] = df["Task_Date"] + pd.to_timedelta(np.random.randint(1, 10, size=len(df)), unit='d')
-        df["Meeting_Count"] = np.random.randint(0, 6, size=len(df))
+
+        df["Task_Date"] = [
+            today - timedelta(days=np.random.randint(0, 30))
+            for _ in range(len(df))
+        ]
+
+        df["Deadline"] = (
+            df["Task_Date"]
+            + pd.to_timedelta(
+                np.random.randint(1, 15, size=len(df)),
+                unit="D"
+            )
+        )
 
     return df
 
+
 df = load_data()
 
-# ---------------- UI STYLE ----------------
+risk_data = generate_risk_summary(df)
+# Store globally
+st.session_state["df"] = df
+
+# ---------------- CUSTOM CSS ----------------
+
 st.markdown("""
-    <style>
-    .main {background-color: #0e1117; color: white;}
-    .stMetric {background-color: #1c1f26; padding: 10px; border-radius: 10px;}
-    </style>
+<style>
+
+.stApp {
+    background: linear-gradient(
+        135deg,
+        #020617,
+        #0f172a
+    );
+}
+
+.main-title {
+    font-size: 42px;
+    font-weight: 700;
+    color: white;
+}
+
+.hero {
+    padding: 20px;
+    border-radius: 15px;
+    background: linear-gradient(
+        90deg,
+        #1e3a8a,
+        #0f172a
+    );
+    margin-bottom: 20px;
+}
+
+.hero-text {
+    color: white;
+    margin: 0;
+}
+
+.hero h2 {
+    font-size: 42px;
+    margin-bottom: 10px;
+}
+
+.hero p {
+    font-size: 18px;
+    opacity: 0.9;
+}
+
+            section[data-testid="stSidebar"] {
+    background-color: #111827;
+}
+
+/* Sidebar Buttons */
+
+section[data-testid="stSidebar"] button {
+    width: 100% !important;
+    height: 50px !important;
+
+    border-radius: 12px !important;
+
+    border: 1px solid rgba(255,255,255,0.08) !important;
+
+    background: rgba(255,255,255,0.03) !important;
+
+    color: white !important;
+
+    text-align: left !important;
+
+    font-size: 15px !important;
+
+    font-weight: 500 !important;
+
+    margin-bottom: 8px !important;
+
+    transition: all 0.3s ease !important;
+}
+
+section[data-testid="stSidebar"] button:hover {
+    background: rgba(37,99,235,0.25) !important;
+
+    border: 1px solid #3b82f6 !important;
+
+    transform: translateX(4px);
+}
+</style>
 """, unsafe_allow_html=True)
 
-st.title("🚀 AI Co-Lead: Intelligent Team Dashboard")
+# ---------------- HEADER ----------------
+
+st.markdown(
+    """
+    <div class='main-title'>
+    🚀 AI Co-Lead: Intelligent Team Lead Assistant
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown("""
+<div class='hero'>
+    <h2 class='hero-text'>
+        Smart insights for modern team leaders
+    </h2>
+    <p class='hero-text'>
+            Monitor risks • Optimize workload • Improve performance
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
 # ---------------- SIDEBAR ----------------
-page = st.sidebar.radio("Navigation", [
-    "📊 Overview",
-    "📈 Work Analytics",
-    "⚠️ Risk Analysis",
-    "📅 Deadlines & Risks",
-    "🆕 New Tasks",
-    "📊 Progress Tracking",
-    "📞 Meetings Summary",
-    "👥 Team Insights",
-    "🤖 AI Assistant"
-])
 
-# ---------------- OVERVIEW ----------------
-if page == "📊 Overview":
-    st.header("📊 Overview")
+# ==========================================
+# SIDEBAR MENU
+# ==========================================
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Employees", len(df))
-    col2.metric("Active Work", int(df["Tasks_Assigned"].sum()))
-    col3.metric("Completed", int(df["Tasks_Completed"].sum()))
-    col4.metric("Overdue", int(df["Overdue_Tasks"].sum()))
+# ---------------- SIDEBAR ----------------
 
-    st.subheader("📌 Work Summary (KPI View)")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Tasks Assigned", int(df["Tasks_Assigned"].sum()))
-    col2.metric("Tasks Completed", int(df["Tasks_Completed"].sum()))
-    col3.metric("Overdue Tasks", int(df["Overdue_Tasks"].sum()))
+st.sidebar.markdown("""
+<h3 style="
+color:white;
+margin-bottom:10px;
+">
+📍 Navigation
+</h3>
+""", unsafe_allow_html=True)
 
-    st.subheader("📊 Work Distribution Graph")
-    st.caption("X-axis: Work Type | Y-axis: Number of Tasks")
+st.sidebar.markdown(f"""
+<div style="
+background:linear-gradient(135deg,#1e3a8a,#0f172a);
+padding:20px;
+border-radius:20px;
+text-align:center;
+box-shadow:0px 6px 25px rgba(37,99,235,0.4);
+margin-bottom:20px;
+">
 
-    work_data = pd.DataFrame({
-        "Work Type": ["Assigned", "Completed", "Overdue"],
-        "Count": [
-            df["Tasks_Assigned"].sum(),
-            df["Tasks_Completed"].sum(),
-            df["Overdue_Tasks"].sum()
-        ],
-        "Description": [
-            "Total tasks assigned to employees",
-            "Tasks successfully completed",
-            "Tasks delayed beyond deadline"
-        ]
-    })
+<h2 style="
+color:white;
+margin-bottom:5px;
+">
+🚀 AI Co-Lead
+</h2>
 
-    fig = px.bar(
-        work_data,
-        x="Work Type",
-        y="Count",
-        color="Work Type",
-        hover_data=["Description"],
-        title="Work Summary"
-    )
+<p style="
+color:#dbeafe;
+font-size:13px;
+margin-bottom:15px;
+">
+Intelligent Team Lead Assistant
+</p>
 
-    st.plotly_chart(fig, use_container_width=True)
+<hr style="
+border:1px solid rgba(255,255,255,0.1);
+">
 
-# ---------------- WORK ANALYTICS ----------------
-elif page == "📈 Work Analytics":
-    st.header("📈 Work Analytics")
+<h3 style="
+color:#22c55e;
+margin-bottom:0;
+">
+{risk_data['team_health']}%
+</h3>
 
-    st.subheader("Department-wise Workload")
-    st.caption("X-axis: Department | Y-axis: Tasks")
+<p style="
+color:white;
+font-size:12px;
+margin-top:0;
+">
+Team Health
+</p>
 
-    dept_data = df.groupby("Department")[["Tasks_Assigned", "Tasks_Completed"]].sum().reset_index()
+<h3 style="
+color:#f59e0b;
+margin-bottom:0;
+">
+{risk_data['organization_risk']}%
+</h3>
 
-    fig = px.bar(
-        dept_data,
-        x="Department",
-        y=["Tasks_Assigned", "Tasks_Completed"],
-        barmode="group",
-        title="Department-wise Workload",
-        hover_data={
-            "Tasks_Assigned": True,
-            "Tasks_Completed": True
-        }
-    )
+<p style="
+color:white;
+font-size:12px;
+margin-top:0;
+">
+Organization Risk
+</p>
 
-    st.plotly_chart(fig, use_container_width=True)
+</div>
+""", unsafe_allow_html=True)
 
-    st.subheader("Top Performing Employees")
-    top = df.sort_values(by="Completion_Rate", ascending=False).head(10)
-    st.dataframe(top[["Employee_ID", "Department", "Completion_Rate"]])
+if risk_data["team_health"] > 80:
+    st.sidebar.success("🟢 Team Performing Well")
 
-# ---------------- RISK ----------------
-elif page == "⚠️ Risk Analysis":
-    st.header("⚠️ Risk Analysis")
+elif risk_data["team_health"] > 60:
+    st.sidebar.warning("🟡 Monitor Team Closely")
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Burnout Risk", int(df["Burnout_Risk"].sum()))
-    col2.metric("Disengagement Risk", int(df["Disengagement_Risk"].sum()))
-    col3.metric("Sprint Risk", int(df["Sprint_Risk"].sum()))
+else:
+    st.sidebar.error("🔴 Immediate Attention Needed")
 
-    st.subheader("📊 Risk Distribution Graph")
-    st.caption("X-axis: Risk Type | Y-axis: Count")
+st.sidebar.markdown("""
+### 📍 Navigation
+""")
 
-    risk_data = pd.DataFrame({
-        "Risk Type": ["Burnout", "Disengagement", "Sprint"],
-        "Count": [
-            df["Burnout_Risk"].sum(),
-            df["Disengagement_Risk"].sum(),
-            df["Sprint_Risk"].sum()
-        ],
-        "Description": [
-            "High workload + stress",
-            "Low communication + engagement",
-            "High blockers / delays"
-        ]
-    })
+if "page" not in st.session_state:
+    st.session_state.page = "🏠 Home"
 
-    fig = px.bar(
-        risk_data,
-        x="Risk Type",
-        y="Count",
-        color="Risk Type",
-        hover_data=["Description"],
-        title="Risk Distribution"
-    )
+st.sidebar.success(
+    f"Current Page: {st.session_state.page}"
+)
 
-    st.plotly_chart(fig, use_container_width=True)
+if st.sidebar.button("🏠 Home", use_container_width=True):
+    st.session_state.page = "🏠 Home"
 
-# ---------------- DEADLINES ----------------
-elif page == "📅 Deadlines & Risks":
-    st.header("📅 Deadlines & Risks")
+if st.sidebar.button("📊 Work Analytics", use_container_width=True):
+    st.session_state.page = "📊 Work Analytics"
 
-    st.subheader("⏳ Tasks Near Deadline")
-    st.caption("Tasks due in next 2 days")
-    near_deadline = df[df["Deadline"] <= datetime.today() + timedelta(days=2)]
-    st.dataframe(near_deadline[["Employee_ID", "Deadline", "Overdue_Tasks"]].head(30))
+if st.sidebar.button("⚠️ Risk Center", use_container_width=True):
+    st.session_state.page = "⚠️ Risk Center"
 
-    st.subheader("⚠️ High Risk Tasks")
-    st.dataframe(df[df["Sprint_Risk"] == 1].head(30))
+if st.sidebar.button("📞 Meetings", use_container_width=True):
+    st.session_state.page = "📞 Meetings"
 
-# ---------------- NEW TASKS ----------------
-elif page == "🆕 New Tasks":
-    st.header("🆕 New Tasks")
+if st.sidebar.button("📅 Deadlines", use_container_width=True):
+    st.session_state.page = "📅 Deadlines"
 
-    st.caption("Recently assigned tasks")
-    recent = df.sort_values(by="Task_Date", ascending=False).head(30)
-    st.dataframe(recent[["Employee_ID", "Department", "Task_Date"]])
+if st.sidebar.button("👥 Team Insights", use_container_width=True):
+    st.session_state.page = "👥 Team Insights"
 
-# ---------------- PROGRESS ----------------
-elif page == "📊 Progress Tracking":
-    st.header("📊 Progress Tracking")
+if st.sidebar.button("🤖 AI Assistant", use_container_width=True):
+    st.session_state.page = "🤖 AI Assistant"
 
-    df["Progress_%"] = (df["Tasks_Completed"] / df["Tasks_Assigned"]) * 100
+if st.sidebar.button("📄 Reports", use_container_width=True):
+    st.session_state.page = "📄 Reports"
 
-    st.subheader("Progress Table")
-    st.dataframe(df[["Employee_ID", "Progress_%"]].head(30))
+page = st.session_state.page
 
-    st.subheader("📈 Progress Trend")
-    st.caption("X-axis: Employees | Y-axis: Completion %")
-    st.line_chart(df["Progress_%"].head(100))
+# ---------------- ROUTING ----------------
 
-# ---------------- MEETINGS ----------------
-elif page == "📞 Meetings Summary":
-    st.header("📞 Meetings Summary")
+from pages.home import render_home
 
-    st.subheader("Meeting Load by Department")
-    st.caption("X-axis: Department | Y-axis: Meeting Hours")
+if page == "🏠 Home":
+    render_home(df)
 
-    meeting_data = df.groupby("Department")["Meeting_Hours"].sum().reset_index()
+elif page == "📊 Work Analytics":
+    render_analytics(df)
 
-    fig = px.bar(
-        meeting_data,
-        x="Department",
-        y="Meeting_Hours",
-        color="Meeting_Hours",
-        title="Meeting Load",
-        hover_data={"Meeting_Hours": True}
-    )
+elif page == "⚠️ Risk Center":
+    render_risks(df)
 
-    st.plotly_chart(fig, use_container_width=True)
+elif page == "📞 Meetings":
+    render_meetings(df)
 
-# ---------------- TEAM ----------------
+elif page == "📅 Deadlines":
+    render_deadlines(df)
+
 elif page == "👥 Team Insights":
-    st.header("👥 Team Insights")
+    render_employees(df)
 
-    st.subheader("🔥 Overloaded Employees")
-    st.dataframe(df[df["Overload_Flag"] == 1].head(20))
-
-    st.subheader("😐 Low Engagement Employees")
-    st.dataframe(df[df["Disengagement_Risk"] == 1].head(20))
-
-# ---------------- AI ----------------
 elif page == "🤖 AI Assistant":
-    st.header("🤖 AI Assistant")
+    render_chatbot(df)
 
-    user_input = st.text_input("Ask about team performance...")
-
-    if user_input:
-        if "burnout" in user_input.lower():
-            st.write("⚠️ Suggest reducing workload for high-risk employees.")
-        elif "engagement" in user_input.lower():
-            st.write("📉 Suggest conducting 1:1 meetings.")
-        elif "sprint" in user_input.lower():
-            st.write("🚨 Check blockers affecting sprint.")
-        else:
-            st.write("🤖 Monitor workload, communication, and risks regularly.")
-
-    st.success("AI Assistant supports decision-making.")
+elif page == "📄 Reports":
+    render_reports(df)
